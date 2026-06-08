@@ -1,110 +1,48 @@
-/*
-  =========================================================
-   RP2040 + BH1750 Light Sensor + LED Control
-  =========================================================
+#include <Wire.h>
+#include <BH1750.h>
 
-  LIBRARIES USED:
-  ---------------------------------------------------------
-  - Wire (I2C communication)
-  - BH1750 (Light intensity sensor)
+#define RED_LED 18   // LED pin
 
-  CONNECTIONS:
-  ---------------------------------------------------------
-  BH1750 Light Sensor (I2C):
-    VCC -> 3.3V / 5V
-    GND -> GND
-    SDA -> GPIO 2
-    SCL -> GPIO 3
-    Address -> 0x5C
-
-  LED:
-    Red LED -> GPIO 18
-
-  FUNCTIONALITY:
-  ---------------------------------------------------------
-  - Reads ambient light intensity (in lux)
-  - If light < 100 lux → LED ON
-  - If light ≥ 100 lux → LED OFF
-*/
-
-#include <Wire.h>     // I2C communication library
-#include <BH1750.h>   // BH1750 sensor library
-
-// ==========================
-// I2C PIN DEFINITIONS
-// ==========================
-#define I2C_SDA 2
-#define I2C_SCL 3
-
-// ==========================
-// LED PIN DEFINITION
-// ==========================
-#define Red_LED 18
-
-// ==========================
-// BH1750 SENSOR OBJECT
-// ==========================
-BH1750 lightMeter(0x5c); // Sensor with I2C address 0x5C
+BH1750 lightMeter;
 
 void setup() {
+  Serial.begin(115200);
 
-  // ==========================
-  // SERIAL INITIALIZATION
-  // ==========================
-  Serial.begin(9600);
-  delay(100); // Allow serial to stabilize
-
-  // ==========================
-  // I2C INITIALIZATION
-  // ==========================
-  Wire1.setSDA(I2C_SDA);
-  Wire1.setSCL(I2C_SCL);
-  Wire1.begin();
-
-  // ==========================
-  // SENSOR INITIALIZATION
-  // ==========================
-  if (lightMeter.begin(BH1750::CONTINUOUS_HIGH_RES_MODE, 0x5c, &Wire1)) {
-    Serial.println("BH1750 sensor initialized.");
-  } else {
-    Serial.println("Failed to initialize BH1750 sensor.");
+  while (!Serial) {
+    delay(10);
   }
 
-  // ==========================
-  // LED PIN SETUP
-  // ==========================
-  pinMode(Red_LED, OUTPUT);
+  pinMode(RED_LED, OUTPUT);
+  digitalWrite(RED_LED, LOW);
+
+  Wire.begin();
+
+  if (lightMeter.begin(BH1750::CONTINUOUS_HIGH_RES_MODE, 0x5C, &Wire)) {
+    Serial.println("BH1750 initialized successfully");
+  } else {
+    Serial.println("BH1750 initialization failed");
+    while (1);
+  }
 }
 
 void loop() {
+  float lux = lightMeter.readLightLevel();
 
-  // ==========================
-  // CHECK IF SENSOR IS READY
-  // ==========================
-  if (lightMeter.measurementReady(true)) {
+  Serial.print("Lux: ");
+  Serial.print(lux);
+  Serial.println(" lx");
 
-    // Read light intensity in lux
-    float lux = lightMeter.readLightLevel();
-
-    // ==========================
-    // SERIAL OUTPUT
-    // ==========================
-    Serial.print("Current light level: ");
-    Serial.print(lux);
-    Serial.println(" lx");
-
-    // ==========================
-    // LED CONTROL LOGIC
-    // ==========================
-    if (lux < 100) {
-      digitalWrite(Red_LED, HIGH); // Low light → LED ON
-    } else {
-      digitalWrite(Red_LED, LOW);  // Bright light → LED OFF
-    }
+  // Turn LED ON when it is dark
+  if (lux < 100) {
+    digitalWrite(RED_LED, HIGH);
+    Serial.println("LED ON (Low Light)");
+  }
+  else {
+    digitalWrite(RED_LED, LOW);
+    Serial.println("LED OFF (Bright Light)");
   }
 
-  // ==========================
-  // DELAY FOR STABILITY
-  // ==========================
-  delay(200);
+  Serial.println("--------------------");
+
+  delay(1000);
 }
